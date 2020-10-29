@@ -131,17 +131,17 @@ class CustomCrop extends Component {
     }
 
     updateOverlayString() {
-        let topLeftx = this.state.topLeft.x._value  this.state.topLeft.x._offset;
-        let topLefty = this.state.topLeft.y._value  this.state.topLeft.y._offset;
+        let topLeftx = this.state.topLeft.x._value + this.state.topLeft.x._offset;
+        let topLefty = this.state.topLeft.y._value + this.state.topLeft.y._offset;
 
-        let topRightx = this.state.topRight.x._value  this.state.topRight.x._offset;
-        let topRighty = this.state.topRight.y._value  this.state.topRight.y._offset;
+        let topRightx = this.state.topRight.x._value + this.state.topRight.x._offset;
+        let topRighty = this.state.topRight.y._value + this.state.topRight.y._offset;
 
-        let bottomRightx = this.state.bottomRight.x._value  this.state.bottomRight.x._offset;
-        let bottomRighty = this.state.bottomRight.y._value  this.state.bottomRight.y._offset;
+        let bottomRightx = this.state.bottomRight.x._value + this.state.bottomRight.x._offset;
+        let bottomRighty = this.state.bottomRight.y._value + this.state.bottomRight.y._offset;
 
-        let bottomLeftx = this.state.bottomLeft.x._value  this.state.bottomLeft.x._offset;
-        let bottomLefty = this.state.bottomLeft.y._value  this.state.bottomLeft.y._offset;
+        let bottomLeftx = this.state.bottomLeft.x._value + this.state.bottomLeft.x._offset;
+        let bottomLefty = this.state.bottomLeft.y._value + this.state.bottomLeft.y._offset;
         
         this.setState({
             overlayPositions: `${topLeftx},${topLefty} ${topRightx},${topRighty} ${bottomRightx},${bottomRighty} ${bottomLeftx},${bottomLefty}`,
@@ -202,7 +202,7 @@ class CustomCrop extends Component {
         const x = this.state.bottomLeft.x._value;
         const y = this.state.bottomLeft.y._value;
         const bottomX = x  (this.state.viewWidth / 2 - width / 2);
-        const viewBottomY = height / 2  this.state.viewHeight / 2;
+        const viewBottomY = height / 2 + this.state.viewHeight / 2;
         const bottomY = Math.min(Math.min(viewBottomY, y) - (viewBottomY - this.state.viewHeight), this.state.viewHeight);
         return {
             x: ( bottomX * this.props.width ) / this.state.viewWidth,
@@ -214,7 +214,7 @@ class CustomCrop extends Component {
         const x = this.state.bottomRight.x._value;
         const y = this.state.bottomRight.y._value;
         const bottomX = x  (this.state.viewWidth / 2 - width / 2);
-        const viewBottomY = height / 2  this.state.viewHeight / 2;
+        const viewBottomY = height / 2 + this.state.viewHeight / 2;
         const bottomY = Math.min(Math.min(viewBottomY, y) - (viewBottomY - this.state.viewHeight), this.state.viewHeight);
         return {
             x: ( bottomX * this.props.width ) / this.state.viewWidth,
