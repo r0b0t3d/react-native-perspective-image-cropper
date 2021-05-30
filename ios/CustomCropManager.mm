@@ -38,7 +38,14 @@ RCT_EXPORT_METHOD(crop:(NSDictionary *)points imageUri:(NSString *)imageUri call
     UIImage *image = [UIImage imageWithCGImage:cgimage];
     
     NSData *imageToEncode = UIImageJPEGRepresentation(image, 0.8);
-    callback(@[[NSNull null], @{@"image": [imageToEncode base64EncodedStringWithOptions:NSDataBase64EncodingEndLineWithLineFeed]}]);
+    
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
+        NSArray *paths = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES);
+        NSString *documentsDirectory = [paths objectAtIndex:0];
+        NSString *dataPath = [documentsDirectory stringByAppendingPathComponent:@"temp.jpg"];
+        [imageToEncode writeToFile:dataPath atomically:YES];
+        callback(@[[NSNull null], @{@"image": dataPath}]);
+    });
 
     CGImageRelease(cgimage);
 }
