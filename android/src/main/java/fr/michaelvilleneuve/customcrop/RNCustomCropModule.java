@@ -22,6 +22,9 @@ import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 
 public class RNCustomCropModule extends ReactContextBaseJavaModule {
 
@@ -91,11 +94,29 @@ public class RNCustomCropModule extends ReactContextBaseJavaModule {
     bitmap.compress(Bitmap.CompressFormat.JPEG, 70, byteArrayOutputStream);
     byte[] byteArray = byteArrayOutputStream.toByteArray();
 
+    File file = new File(reactContext.getCacheDir(), "temp.jpg");
+    saveToFile(file, byteArrayOutputStream);
     WritableMap map = Arguments.createMap();
-    map.putString("image", Base64.encodeToString(byteArray, Base64.DEFAULT));
+    map.putString("image", file.getAbsolutePath());
     callback.invoke(null, map);
 
     m.release();
   }
 
+  private void saveToFile(File file, ByteArrayOutputStream baos) {
+    FileOutputStream fos = null;
+    try {
+      fos = new FileOutputStream(file);
+      baos.writeTo(fos);
+    } catch(IOException ioe) {
+      // Handle exception here
+      ioe.printStackTrace();
+    } finally {
+      try {
+        fos.close();
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+    }
+  }
 }
