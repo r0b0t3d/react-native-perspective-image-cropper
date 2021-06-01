@@ -10,7 +10,6 @@ RCT_EXPORT_METHOD(crop:(NSDictionary *)points imageUri:(NSString *)imageUri call
     NSString *parsedImageUri = [imageUri stringByReplacingOccurrencesOfString:@"file://" withString:@""];
     NSURL *fileURL = [NSURL fileURLWithPath:parsedImageUri];
     CIImage *ciImage = [CIImage imageWithContentsOfURL:fileURL];
-    ciImage = [ciImage imageByApplyingOrientation:kCGImagePropertyOrientationRight];
     
     CGPoint newLeft = CGPointMake([points[@"topLeft"][@"x"] floatValue], [points[@"topLeft"][@"y"] floatValue]);
     CGPoint newRight = CGPointMake([points[@"topRight"][@"x"] floatValue], [points[@"topRight"][@"y"] floatValue]);
