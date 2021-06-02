@@ -59,8 +59,12 @@ public class RNCustomCropModule extends ReactContextBaseJavaModule {
     Mat src = Imgcodecs.imread(imageUri.replace("file://", ""), Imgproc.COLOR_BGR2RGB);
     Imgproc.cvtColor(src, src, Imgproc.COLOR_BGR2RGB);
 
-    boolean ratioAlreadyApplied = tr.x * (src.size().width / 500) < src.size().width;
-    double ratio = ratioAlreadyApplied ? src.size().width / 500 : 1;
+    // FIXME: This ratio introduce bug on my end
+    // When the crop rectangle is small,
+    // ratioAlreadyApplied will be true and ratio is smaller than 1. So the crop area is not correct
+    /* boolean ratioAlreadyApplied = tr.x * (src.size().width / 500) < src.size().width;
+    double ratio = ratioAlreadyApplied ? src.size().width / 500 : 1; */
+    double ratio = 1;
 
     double widthA = Math.sqrt(Math.pow(br.x - bl.x, 2) + Math.pow(br.y - bl.y, 2));
     double widthB = Math.sqrt(Math.pow(tr.x - tl.x, 2) + Math.pow(tr.y - tl.y, 2));
@@ -92,7 +96,6 @@ public class RNCustomCropModule extends ReactContextBaseJavaModule {
 
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     bitmap.compress(Bitmap.CompressFormat.JPEG, 70, byteArrayOutputStream);
-    byte[] byteArray = byteArrayOutputStream.toByteArray();
 
     File file = new File(reactContext.getCacheDir(), "temp.jpg");
     saveToFile(file, byteArrayOutputStream);
@@ -100,6 +103,7 @@ public class RNCustomCropModule extends ReactContextBaseJavaModule {
     map.putString("image", file.getAbsolutePath());
     callback.invoke(null, map);
 
+    src.release();
     m.release();
   }
 
@@ -114,6 +118,7 @@ public class RNCustomCropModule extends ReactContextBaseJavaModule {
     } finally {
       try {
         fos.close();
+        baos.close();
       } catch (IOException e) {
         e.printStackTrace();
       }
