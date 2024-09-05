@@ -238,7 +238,7 @@ RCT_EXPORT_METHOD(crop:(NSDictionary *)points
      CGPoint p4 = rect.bottomLeft;
      CGFloat height = hypotf(p3.x - p4.x, p3.y - p4.y);
 
-     CGFloat currentHalfPerimiterValue = height   width;
+     CGFloat currentHalfPerimiterValue = height + width;
 
      if (halfPerimiterValue < currentHalfPerimiterValue) {
        halfPerimiterValue = currentHalfPerimiterValue;
