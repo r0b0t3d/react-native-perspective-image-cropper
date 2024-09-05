@@ -24,66 +24,57 @@ class CustomCrop extends Component {
 
     constructor(props) {
         super(props);
+        let finalWidth = width;
+        let finalHeight = height;
+        const iAspectRatio = this.props.width / this.props.height;
+        const sAspectRatio = width / height;
+        if (iAspectRatio > sAspectRatio) {
+            finalHeight = (this.props.height * width) / this.props.width;
+        } else {
+            finalWidth = (this.props.width * height) / this.props.height;
+        }
+
         this.state = {
-            viewWidth: this.viewWidth(),
-            viewHeight: this.viewHeight(),
+            viewWidth: finalWidth,
+            viewHeight: finalHeight,
             moving: false,
         };
-
-        this.state = {
-            ...this.state,
-            topLeft: new Animated.ValueXY(
-                props.rectangleCoordinates
-                    ? props.rectangleCoordinates.topLeft
-                    : { x: 100, y: 100 },
-            ),
-            topRight: new Animated.ValueXY(
-                props.rectangleCoordinates
-                    ? props.rectangleCoordinates.topRight
-                    : { x: Dimensions.get('window').width - 100, y: 100 },
-            ),
-            bottomLeft: new Animated.ValueXY(
-                props.rectangleCoordinates
-                    ? props.rectangleCoordinates.bottomLeft
-                    : { x: 100, y: this.state.viewHeight - 100 },
-            ),
-            bottomRight: new Animated.ValueXY(
-                props.rectangleCoordinates
-                    ? props.rectangleCoordinates.bottomRight
-                    : {
-                          x: Dimensions.get('window').width - 100,
-                          y: this.state.viewHeight - 100,
-                      },
-            ),
-        };
-        this.state = {
-            ...this.state,
-            overlayPositions: `${this.state.topLeft.x._value},${
-                this.state.topLeft.y._value
-            } ${this.state.topRight.x._value},${this.state.topRight.y._value} ${
-                this.state.bottomRight.x._value
-            },${this.state.bottomRight.y._value} ${
-                this.state.bottomLeft.x._value
-            },${this.state.bottomLeft.y._value}`,
-        };
-
-        this.panResponderTopLeft = this.createPanResponser(this.state.topLeft);
-        this.panResponderTopRight = this.createPanResponser(
-            this.state.topRight,
-        );
-        this.panResponderBottomLeft = this.createPanResponser(
-            this.state.bottomLeft,
-        );
-        this.panResponderBottomRight = this.createPanResponser(
-            this.state.bottomRight,
-        );
+        NativeModules.CustomCropManager
+            .detectRectangleForImage(this.props.image)
+            .then(result => {
+                const { topLeft, topRight, bottomLeft, bottomRight } = result;
+                this.initRectangle({
+                    topLeft: this.translateImageCoordToViewCoord(topLeft),
+                    topRight: this.translateImageCoordToViewCoord(topRight),
+                    bottomLeft: this.translateImageCoordToViewCoord(bottomLeft),
+                    bottomRight: this.translateImageCoordToViewCoord(bottomRight),
+                })
+            })
+            .catch(error => {
+                const {viewHeight, viewWidth} = this.state;
+                this.initRectangle({
+                    topLeft: { x: 50, y: 50 },
+                    topRight: { x: viewWidth - 50, y: 50 },
+                    bottomRight: { x: viewWidth - 50, y: viewHeight - 50 },
+                    bottomLeft: { x: 50, y: viewHeight - 50 },
+                })
+            })
     }
 
     componentDidUpdate(prevProps, prevState) {
         if (prevProps.height !== this.props.height) {
+            let finalWidth = width;
+            let finalHeight = height;
+            const iAspectRatio = this.props.width / this.props.height;
+            const sAspectRatio = width / height;
+            if (iAspectRatio > sAspectRatio) {
+                finalHeight = (this.props.height * width) / this.props.width;
+            } else {
+                finalWidth = (this.props.width * height) / this.props.height;
+            }
             this.setState({
-                viewHeight: this.viewHeight(),
-                viewWidth: this.viewWidth(),
+                viewHeight: finalHeight,
+                viewWidth: finalWidth,
                 height: this.props.height,
                 width: this.props.width
             })
@@ -116,10 +107,10 @@ class CustomCrop extends Component {
 
     crop() {
         const coordinates = {
-            topLeft: this.topLeft(),
-            topRight: this.topRight(),
-            bottomLeft: this.bottomLeft(),
-            bottomRight: this.bottomRight(),
+            topLeft: this.translateViewCoordToImageCoord(this.state.topLeft),
+            topRight: this.translateViewCoordToImageCoord(this.state.topRight),
+            bottomLeft: this.translateViewCoordToImageCoord(this.state.bottomLeft),
+            bottomRight: this.translateViewCoordToImageCoord(this.state.bottomRight),
             height: this.props.height,
             width: this.props.width,
         };
@@ -128,6 +119,26 @@ class CustomCrop extends Component {
             this.props.image,
             (err, res) => this.props.updateImage(res.image, coordinates),
         );
+    }
+
+    initRectangle(data) {
+        console.log({data});
+        const { topLeft, topRight, bottomLeft, bottomRight } = data;
+        const aTopLeft = new Animated.ValueXY(topLeft);
+        const aTopRight = new Animated.ValueXY(topRight);
+        const aBottomLeft = new Animated.ValueXY(bottomLeft);
+        const aBottomRight = new Animated.ValueXY(bottomRight);
+        this.panResponderTopLeft = this.createPanResponser(aTopLeft);
+        this.panResponderTopRight = this.createPanResponser(aTopRight);
+        this.panResponderBottomLeft = this.createPanResponser(aBottomLeft);
+        this.panResponderBottomRight = this.createPanResponser(aBottomRight);
+        this.setState({
+            topLeft: aTopLeft,
+            topRight: aTopRight,
+            bottomLeft: aBottomLeft,
+            bottomRight: aBottomRight,
+        });
+        this.updateOverlayString();
     }
 
     updateOverlayString() {
@@ -148,77 +159,19 @@ class CustomCrop extends Component {
         });
     }
 
-    imageCoordinatesToViewCoordinates(corner) {
+    translateViewCoordToImageCoord(point) {
+        const x = point.x._value;
+        const y = point.y._value;
         return {
-            x: (corner.x * Dimensions.get('window').width) / this.props.width,
-            y: (corner.y * this.state.viewHeight) / this.props.height,
-        };
-    }
-
-    viewCoordinatesToImageCoordinates(corner) {
-        return {
-            x: (corner.x._value / Dimensions.get('window').width) * this.props.width,
-            y: (corner.y._value / this.state.viewHeight) * this.props.height,
-        };
-    }
-
-    viewHeight() {
-        const calculatedHeight = width * (this.props.height / this.props.width);
-        const h = calculatedHeight > height ? calculatedHeight : height;
-        return h;
-    }
-
-    viewWidth() {
-        const calculatedWidth = height * (this.props.width / this.props.height);
-        const w = calculatedWidth > width ? calculatedWidth : width;
-        return w;
-    }
-
-    topLeft() {       
-        const x = this.state.topLeft.x._value;
-        const y = this.state.topLeft.y._value;
-        const topLeftX = x + (this.state.viewWidth / 2 - width / 2);
-        const viewTopY = height / 2 - this.state.viewHeight / 2;
-        const topY = Math.max(y - viewTopY, 0);
-        return {
-            x: ( topLeftX * this.props.width ) / this.state.viewWidth,
-            y: ( topY * this.props.height ) / this.state.viewHeight,
+            x: x * this.props.width / this.state.viewWidth,
+            y: y * this.props.height / this.state.viewHeight,
         }
     }
 
-    topRight() {
-        const x = this.state.topRight.x._value;
-        const y = this.state.topRight.y._value;
-        const topX = x + (this.state.viewWidth / 2 - width / 2);
-        const viewTopY = height / 2 - this.state.viewHeight / 2;
-        const topY = Math.max(y - viewTopY, 0);
+    translateImageCoordToViewCoord(point) {
         return {
-            x: ( topX * this.props.width ) / this.state.viewWidth,
-            y: ( topY * this.props.height ) / this.state.viewHeight,
-        }
-    }
-
-    bottomLeft() {
-        const x = this.state.bottomLeft.x._value;
-        const y = this.state.bottomLeft.y._value;
-        const bottomX = x + (this.state.viewWidth / 2 - width / 2);
-        const viewBottomY = height / 2 + this.state.viewHeight / 2;
-        const bottomY = Math.min(Math.min(viewBottomY, y) - (viewBottomY - this.state.viewHeight), this.state.viewHeight);
-        return {
-            x: ( bottomX * this.props.width ) / this.state.viewWidth,
-            y: ( bottomY * this.props.height ) / this.state.viewHeight,
-        }
-    }
-
-    bottomRight() {
-        const x = this.state.bottomRight.x._value;
-        const y = this.state.bottomRight.y._value;
-        const bottomX = x + (this.state.viewWidth / 2 - width / 2);
-        const viewBottomY = height / 2 + this.state.viewHeight / 2;
-        const bottomY = Math.min(Math.min(viewBottomY, y) - (viewBottomY - this.state.viewHeight), this.state.viewHeight);
-        return {
-            x: ( bottomX * this.props.width ) / this.state.viewWidth,
-            y: ( bottomY * this.props.height ) / this.state.viewHeight,
+            x: point.x * this.state.viewWidth / this.props.width,
+            y: point.y * this.state.viewHeight / this.props.height,
         }
     }
         
@@ -228,12 +181,17 @@ class CustomCrop extends Component {
                 style={{
                     flex: 1,
                     alignItems: 'center',
-                    justifyContent: 'flex-end',
+                    justifyContent: 'center',
+                    backgroundColor: 'black'
                 }}
             >
                 <View
                     style={[
                         s(this.props).cropContainer,
+                        {
+                            width: this.state.viewWidth,
+                            height: this.state.viewHeight,
+                        }
                     ]}
                 >
                     {!!this.props.image && (
@@ -241,13 +199,13 @@ class CustomCrop extends Component {
                             style={[
                                 s(this.props).image,
                             ]}
-                            resizeMode="cover"
+                            resizeMode="contain"
                             source={{ uri: this.props.image }}
                         />
                     )}
                     <Svg
-                        height={Dimensions.get('window').height}
-                        width={Dimensions.get('window').width}
+                        height={this.state.viewHeight}
+                        width={this.state.viewWidth}
                         style={{ position: 'absolute', left: 0, top: 0, bottom: 0, right: 0 }}
                     >
                         <AnimatedPolygon
@@ -259,8 +217,8 @@ class CustomCrop extends Component {
                             strokeWidth={this.props.overlayStrokeWidth}
                         />
                     </Svg>
-                    <Animated.View
-                        {...this.panResponderTopLeft.panHandlers}
+                    {this.state.topLeft && <Animated.View
+                        {...this.panResponderTopLeft?.panHandlers}
                         style={[
                             this.state.topLeft.getLayout(),
                             s(this.props).handler,
@@ -283,9 +241,9 @@ class CustomCrop extends Component {
                                 />
                             </>
                         )}
-                    </Animated.View>
-                    <Animated.View
-                        {...this.panResponderTopRight.panHandlers}
+                    </Animated.View>}
+                    {this.state.topRight && <Animated.View
+                        {...this.panResponderTopRight?.panHandlers}
                         style={[
                             this.state.topRight.getLayout(),
                             s(this.props).handler,
@@ -308,9 +266,9 @@ class CustomCrop extends Component {
                                 />
                             </>
                         )}
-                    </Animated.View>
-                    <Animated.View
-                        {...this.panResponderBottomLeft.panHandlers}
+                    </Animated.View>}
+                    {this.state.bottomLeft && <Animated.View
+                        {...this.panResponderBottomLeft?.panHandlers}
                         style={[
                             this.state.bottomLeft.getLayout(),
                             s(this.props).handler,
@@ -333,9 +291,9 @@ class CustomCrop extends Component {
                                 />
                             </>
                         )}
-                    </Animated.View>
-                    <Animated.View
-                        {...this.panResponderBottomRight.panHandlers}
+                    </Animated.View>}
+                    {this.state.bottomRight && <Animated.View
+                        {...this.panResponderBottomRight?.panHandlers}
                         style={[
                             this.state.bottomRight.getLayout(),
                             s(this.props).handler,
@@ -358,7 +316,7 @@ class CustomCrop extends Component {
                                 />
                             </>
                         )}
-                    </Animated.View>
+                    </Animated.View>}
                 </View>
             </View>
         );
@@ -401,7 +359,7 @@ const s = (props) => ({
         position: 'absolute',
     },
     cropContainer: {
-        ...StyleSheet.absoluteFillObject,
+        // ...StyleSheet.absoluteFillObject,
     },
 });
 

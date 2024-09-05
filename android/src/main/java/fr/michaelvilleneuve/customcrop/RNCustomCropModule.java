@@ -2,11 +2,14 @@
 package fr.michaelvilleneuve.customcrop;
 
 import android.graphics.Bitmap;
+import android.graphics.Matrix;
+import android.media.ExifInterface;
 import android.util.Base64;
 import android.util.Log;
 
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.Callback;
+import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
@@ -49,6 +52,12 @@ public class RNCustomCropModule extends ReactContextBaseJavaModule {
   }
 
   @ReactMethod
+  public void detectRectangleForImage(String image, Promise promise) {
+    RectangleDetector detector = new RectangleDetector(this.getReactApplicationContext(), promise);
+    detector.execute(image.replace("file://", ""));
+  }
+
+  @ReactMethod
   public void crop(ReadableMap points, String imageUri, Callback callback) {
 
     Point tl = new Point(points.getMap("topLeft").getDouble("x"), points.getMap("topLeft").getDouble("y"));
@@ -56,7 +65,8 @@ public class RNCustomCropModule extends ReactContextBaseJavaModule {
     Point bl = new Point(points.getMap("bottomLeft").getDouble("x"), points.getMap("bottomLeft").getDouble("y"));
     Point br = new Point(points.getMap("bottomRight").getDouble("x"), points.getMap("bottomRight").getDouble("y"));
 
-    Mat src = Imgcodecs.imread(imageUri.replace("file://", ""), Imgproc.COLOR_BGR2RGB);
+    String imageFile = imageUri.replace("file://", "");
+    Mat src = Imgcodecs.imread(imageFile, Imgproc.COLOR_BGR2RGB);
     Imgproc.cvtColor(src, src, Imgproc.COLOR_BGR2RGB);
 
     // FIXME: This ratio introduce bug on my end
@@ -91,14 +101,21 @@ public class RNCustomCropModule extends ReactContextBaseJavaModule {
 
     Imgproc.warpPerspective(src, doc, m, doc.size());
 
-    Bitmap bitmap = Bitmap.createBitmap(doc.cols(), doc.rows(), Bitmap.Config.ARGB_8888);
-    Utils.matToBitmap(doc, bitmap);
-
-    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    bitmap.compress(Bitmap.CompressFormat.JPEG, 70, byteArrayOutputStream);
-
-    File file = new File(reactContext.getCacheDir(), "temp.jpg");
-    saveToFile(file, byteArrayOutputStream);
+    int orientation = getImageOrientation(imageFile);
+//
+//    Bitmap bitmap = Bitmap.createBitmap(doc.cols(), doc.rows(), Bitmap.Config.ARGB_8888);
+//    Utils.matToBitmap(doc, bitmap);
+//
+//    Matrix matrix = new Matrix();
+//    matrix.postRotate(90);
+//    Bitmap rotatedBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, false);
+//
+//    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+//    rotatedBitmap.compress(Bitmap.CompressFormat.JPEG, 70, byteArrayOutputStream);
+    File file = new File(reactContext.getCacheDir(), System.currentTimeMillis() + ".jpg");
+    Imgproc.cvtColor(doc, doc, Imgproc.COLOR_RGB2BGR);
+    Imgcodecs.imwrite(file.getPath(), doc);
+//    saveToFile(file, byteArrayOutputStream);
     WritableMap map = Arguments.createMap();
     map.putString("image", file.getAbsolutePath());
     callback.invoke(null, map);
@@ -123,5 +140,29 @@ public class RNCustomCropModule extends ReactContextBaseJavaModule {
         e.printStackTrace();
       }
     }
+  }
+
+  private int getImageOrientation(String imgPath) {
+    int rotate = 0;
+    try {
+      ExifInterface exif = new ExifInterface(new File(imgPath).getAbsolutePath());
+      int orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL);
+      switch (orientation) {
+        case ExifInterface.ORIENTATION_ROTATE_270:
+          rotate = 270;
+          break;
+        case ExifInterface.ORIENTATION_ROTATE_180:
+          rotate = 180;
+          break;
+        case ExifInterface.ORIENTATION_ROTATE_90:
+          rotate = 90;
+          break;
+      }
+      Log.i("RotateImage", "Exif orientation: " + orientation);
+      Log.i("RotateImage", "Rotate value: " + rotate);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+    return rotate;
   }
 }
